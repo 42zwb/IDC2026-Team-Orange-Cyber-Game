@@ -1,0 +1,32 @@
+IDC2026 Team Orange - Cyber Game Submission Package
+
+This outer ZIP contains two alternative Cyber Game submission packages:
+
+1. IDC2026_Team_Orange_Cyber_Game_Submission_Minimal.zip
+   This is the minimal participant package. It contains the two team-authored
+   participant files and their PowerShell-focused instructions. The official
+   Cyber Game runtime, Go2 model, scene, and assets must be provided separately
+   by the organizer.
+
+2. IDC2026_Team_Orange_Cyber_Game_Submission_Complete.zip
+   This is the complete runnable package. It contains the official 0814 Cyber
+   Game runtime, models, assets, the current Team Orange participant files,
+   and a PowerShell launcher named run_match.ps1.
+
+PowerShell note
+---------------
+The packages are prepared for PowerShell. Do not use:
+
+  set IDC2026_SIDE=blue
+
+Use the bundled launcher in the complete package instead:
+
+  .\run_match.ps1 -Side red
+  .\run_match.ps1 -Side blue
+
+If using the minimal package, copy its two participant files into the official
+Cyber Game directory and use PowerShell environment-variable syntax:
+
+  $env:IDC2026_SIDE = "blue"
+  python .\run_match.py
+

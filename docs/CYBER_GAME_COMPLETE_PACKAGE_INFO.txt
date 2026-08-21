@@ -1,0 +1,61 @@
+IDC2026 Team Orange - Complete Cyber Game Submission
+Run Instructions and Environment Requirements
+
+Package type
+------------
+This is the complete runnable package. It contains the provided 0814 official
+Cyber Game runtime, its scene/model/assets, the official launcher, and the
+current Team Orange participant files.
+
+The current participant files in the runnable directory are:
+  user_side_go2.py       Team Orange Go2 controller
+  user_mechanism.xml     Team Orange participant mechanism
+
+The participant files have already been placed next to `run_match.py` and
+`scene_IDC2026.xml`, so no file copying is needed after extraction. The
+package also includes `run_match.ps1`, a PowerShell launcher.
+
+Environment requirements
+------------------------
+- Windows 11
+- Python 3.13.9
+- Python packages:
+    mujoco (including mujoco.viewer for the graphical runner)
+    numpy
+- The exact MuJoCo version should be the version approved by the organizer.
+
+ONNX Runtime is not required. The participant controller does not import or
+use onnxruntime, PyTorch, OpenCV, ROS, Gazebo, a camera, or an external model
+file. Internet access is not required during a match.
+
+IMPORTANT: POWERSHELL REQUIRED
+-----------------------------
+This package is prepared for PowerShell. Use PowerShell for the commands
+below. Do NOT use `set IDC2026_SIDE=blue`; that is Command Prompt syntax and
+does not set an environment variable in PowerShell.
+
+How to run
+----------
+1. Extract this ZIP file.
+2. Open PowerShell in the extracted `IDC2026_CyberGame` directory.
+3. Use the bundled PowerShell launcher:
+
+   Red side:
+     .\run_match.ps1 -Side red
+
+   Blue side:
+     .\run_match.ps1 -Side blue
+
+Alternatively, set the environment variable manually:
+
+  $env:IDC2026_SIDE = "blue"
+  python .\run_match.py
+
+The controller defaults to the red side if `IDC2026_SIDE` is not set. The
+launcher owns the field, timing, randomized goals, scoring, viewer, and
+MuJoCo physics stepping. The participant controller receives the public
+observation and returns actuator commands.
+
+If the organizer supplies a newer official runtime, use the organizer's
+version for the final evaluation rather than replacing it with this local
+0814 runtime snapshot.

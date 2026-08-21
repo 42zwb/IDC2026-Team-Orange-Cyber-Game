@@ -1,0 +1,56 @@
+IDC2026 Team Orange - Minimal Cyber Game Submission
+Run Instructions and Environment Requirements
+
+Package type
+------------
+This is the minimal participant package. It contains only the two files
+written for the Cyber Game by the team, plus this explanatory document.
+
+Contents
+--------
+cyber_submission/user_side_go2.py
+cyber_submission/user_mechanism.xml
+
+The package does not include the organizer's field simulator, Go2 model,
+scene XML, or assets. It is therefore not standalone. The two participant
+files must be copied into the organizer's official Cyber Game directory, or
+loaded by the organizer's submission tool.
+
+Environment requirements
+------------------------
+- Windows 11
+- Python 3.13.9
+- The organizer's official Cyber Game runtime package
+- Python packages provided by the official environment:
+    mujoco (including mujoco.viewer for the graphical runner)
+    numpy
+
+ONNX Runtime is not required. The participant controller does not import or
+use onnxruntime, PyTorch, OpenCV, ROS, Gazebo, a camera, or an external model
+file. Internet access is not required during a match.
+
+IMPORTANT: POWERSHELL COMMANDS
+------------------------------
+This package is prepared for PowerShell. Use PowerShell for the commands
+below. Do NOT use `set IDC2026_SIDE=blue`; that is Command Prompt syntax and
+does not set an environment variable in PowerShell.
+
+How to run after installation
+-----------------------------
+1. Copy `user_side_go2.py` and `user_mechanism.xml` into the official Cyber
+   Game directory containing `run_match.py` and `scene_IDC2026.xml`.
+2. Open PowerShell in that directory.
+3. Set the team side with PowerShell syntax and start the official runner:
+
+   Red side:
+     $env:IDC2026_SIDE = "red"
+     python .\run_match.py
+
+   Blue side:
+     $env:IDC2026_SIDE = "blue"
+     python .\run_match.py
+
+The controller defaults to the red side if `IDC2026_SIDE` is not set. Do not
+launch `user_side_go2.py` by itself: the official runner creates the MuJoCo
+model, supplies the public observation, applies actuator commands, and
+advances the simulation.

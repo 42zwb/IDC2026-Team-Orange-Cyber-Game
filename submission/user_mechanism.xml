@@ -1,0 +1,216 @@
+<mujoco model="idc2026_user_compact_shooter">
+  <!--
+    用户机构 XML 的阅读方式：
+
+    1. worldbody 定义真实存在的刚体、关节、几何和碰撞；
+    2. mount_root 是机构的根，官方 go2.xml 会把它 attach 到 Go2 的
+       base_link；
+    3. yellow_launcher/white_launcher 是两条实体载球通道；
+    4. 每条通道有一个 slide 推杆和一个 slide 挡门；
+    5. actuator 区把关节暴露成可由 user_side_go2.py 控制的目标位置执行器。
+
+    XML 中的 pos/size/axis 都使用 MuJoCo 的米、弧度和局部坐标系。子 body
+    的坐标相对于父 body，而不是直接相对于世界。机构挂到 Go2 后，整个
+    mount_root 会跟随机器人运动，所以球和发射器不会悬在世界坐标中。
+  -->
+  <compiler angle="radian" autolimits="true"/>
+
+  <!--
+    紧凑、物理连接的双球发射器。
+
+    两颗球放在固定安装到 Go2 上的短发射管内。每条通道的竖直挡门先挡住
+    球，随后由对应的推杆通过真实接触给球速度。这里没有会跨场地移动的
+    承载框、导轨，也不通过写 qpos、weld 或外力把球直接送到目标。整套机构
+    会作为小型负载随机器狗走到投放区域。
+
+    actuator 的原始名字是 v7 接口要求的六个名字；机构被 go2.xml attach
+    后，官方会自动给它们加上 user_ 前缀。
+  -->
+
+  <!--
+    默认物理参数：
+    contype/conaffinity 控制碰撞类别；condim=6 保留完整接触摩擦维度；
+    friction 的三个数分别对应 MuJoCo 的切向、扭转和滚动摩擦参数。
+    solref/solimp 控制接触约束的柔顺程度和收敛方式。
+  -->
+  <default>
+    <geom contype="1" conaffinity="1" condim="6" priority="1"
+          friction="0.35 0.02 0.002" solref="0.008 1"
+          solimp="0.96 0.99 0.001 0.5 2"/>
+    <joint damping="0.08" armature="0.001"/>
+  </default>
+
+  <worldbody>
+    <!--
+      mount_root 没有 joint，因此它相对于 Go2 base_link 是刚性固定的。
+      这也是参赛机构的合法挂载根。下面的所有 body 都是它的子 body，
+      所以它们会一起随 Go2 的平移和旋转运动。
+    -->
+    <body name="mount_root" pos="0 0 0">
+      <!-- 底板和支架：把机构的质量、碰撞和视觉连接传回 Go2。 -->
+      <geom name="mount_plate" type="box" pos="-0.035 0 0.085"
+            size="0.115 0.105 0.010" mass="0.060"
+            contype="0" conaffinity="0" rgba="0.12 0.16 0.22 1"/>
+      <geom name="mount_bracket" type="box" pos="-0.080 0 0.175"
+            size="0.040 0.085 0.070" mass="0.035"
+            contype="0" conaffinity="0" rgba="0.20 0.25 0.32 1"/>
+      <!--
+        实体桅杆：连接 base_link 和云台铰链。它不仅是视觉上的支柱，也把
+        云台的质量和推球反作用力通过真实刚体链传回 Go2，避免机构看起来
+        像漂浮在机器狗旁边。
+      -->
+      <geom name="turret_mast" type="box" pos="-0.080 0 0.245"
+            size="0.032 0.060 0.060" mass="0.045"
+            contype="0" conaffinity="0" rgba="0.20 0.25 0.32 1"/>
+
+      <!--
+        两级云台：
+        turret_pitch_joint 绕局部 Y 轴俯仰，决定球路高度；
+        turret_yaw_joint 绕局部 Z 轴偏航，决定球路水平左右方向。
+        两个 joint 都有范围、阻尼和 armature，范围会由 compiler 自动限制。
+      -->
+      <body name="turret_pitch_body" pos="-0.080 0 0.255">
+        <joint name="turret_pitch_joint" type="hinge" axis="0 1 0"
+               range="-0.75 1.00" damping="0.25" armature="0.006"/>
+        <geom name="pitch_hub" type="cylinder" pos="0 0 0"
+              size="0.032 0.020" mass="0.025"
+              contype="0" conaffinity="0" rgba="0.18 0.40 0.62 1"/>
+
+        <body name="turret_yaw_body" pos="0 0 0">
+          <joint name="turret_yaw_joint" type="hinge" axis="0 0 1"
+                 range="-3.00 3.00" damping="0.35" armature="0.010"/>
+          <geom name="yaw_hub" type="cylinder" pos="0 0 0"
+                size="0.030 0.014" mass="0.020"
+                contype="0" conaffinity="0" rgba="0.18 0.40 0.62 1"/>
+
+          <!--
+            两个发射管固定在偏航云台上。开口距离转轴很短，保证机构紧凑；
+            yellow/white 只是两条物理通道的名字，不代表本次 reset 时目标
+            一定在固定槽位，目标颜色由官方 observation 决定。
+          -->
+          <body name="yellow_launcher" pos="0 0.070 0">
+            <!-- 黄色通道的底板、顶板和两侧导向壁。顶板透明且不参与碰撞，
+                 方便在 viewer 中看到球；底板和侧壁形成真实接触边界。 -->
+            <geom name="yellow_tube_floor" type="box" pos="0.095 0 -0.050"
+                  size="0.105 0.066 0.004" mass="0.008"
+                  friction="0 0 0"
+                  rgba="0.92 0.73 0.10 0.88"/>
+            <geom name="yellow_tube_roof" type="box" pos="0.095 0 0.050"
+                  size="0.105 0.066 0.004" mass="0.006"
+                  friction="0 0 0"
+                  contype="0" conaffinity="0" rgba="0.92 0.73 0.10 0.32"/>
+            <geom name="yellow_tube_left" type="box" pos="0.095 0.066 0"
+                  size="0.105 0.004 0.050" mass="0.006"
+                  friction="0 0 0"
+                  rgba="0.92 0.73 0.10 0.62"/>
+            <geom name="yellow_tube_right" type="box" pos="0.095 -0.066 0"
+                  size="0.105 0.004 0.050" mass="0.006"
+                  friction="0 0 0"
+                  rgba="0.92 0.73 0.10 0.62"/>
+            <!--
+              site 是官方 reset 放置 yellow_1/yellow_2 的参考点。它不是
+              关节，也不会在运行时“吸住”球；reset 后球就是普通 free body。
+            -->
+            <site name="yellow_slot" type="sphere" pos="0.060 0 0"
+                  size="0.006" rgba="1 0.2 0 0.35"/>
+            <body name="yellow_pusher_body" pos="0.0 0 0">
+              <!-- 推杆沿局部 +X 平移，把球从通道后方推向开口。 -->
+              <joint name="yellow_pusher_joint" type="slide" axis="1 0 0"
+                     range="0 0.230" damping="0.10" armature="0.001"/>
+              <geom name="yellow_pusher_plate" type="box" pos="0.018 0 0"
+                    size="0.018 0.050 0.040" mass="0.012"
+                    rgba="0.95 0.18 0.05 1"/>
+            </body>
+            <!--
+              挡门沿局部 +Z 抬起。它位于球释放点后方；如果太靠前，抬门时
+              可能直接撞球，把球打向目标上沿。当前后移后，推杆先预压、再
+              抬门、最后推进，形成较低的物理弹道。
+            -->
+            <body name="yellow_gate_body" pos="0.130 0 0">
+              <joint name="yellow_gate_joint" type="slide" axis="0 0 1"
+                     range="0 0.280" damping="0.18" armature="0.002"/>
+              <geom name="yellow_gate_pin" type="box" pos="0 0 0"
+                    size="0.006 0.060 0.045" mass="0.006"
+                    rgba="1.00 0.40 0.08 0.94"/>
+            </body>
+          </body>
+
+          <body name="white_launcher" pos="0 -0.070 0">
+            <!-- 白色通道与黄色通道结构相同，只是横向位置和颜色不同。 -->
+            <geom name="white_tube_floor" type="box" pos="0.095 0 -0.050"
+                  size="0.105 0.066 0.004" mass="0.008"
+                  friction="0 0 0"
+                  rgba="0.80 0.86 0.94 0.88"/>
+            <geom name="white_tube_roof" type="box" pos="0.095 0 0.050"
+                  size="0.105 0.066 0.004" mass="0.006"
+                  friction="0 0 0"
+                  contype="0" conaffinity="0" rgba="0.80 0.86 0.94 0.32"/>
+            <geom name="white_tube_left" type="box" pos="0.095 0.066 0"
+                  size="0.105 0.004 0.050" mass="0.006"
+                  friction="0 0 0"
+                  rgba="0.80 0.86 0.94 0.62"/>
+            <geom name="white_tube_right" type="box" pos="0.095 -0.066 0"
+                  size="0.105 0.004 0.050" mass="0.006"
+                  friction="0 0 0"
+                  rgba="0.20 0.48 0.95 0.62"/>
+            <!-- reset 时白球通过这个 site 放入通道；运行中 site 不控制球。 -->
+            <site name="white_slot" type="sphere" pos="0.060 0 0"
+                  size="0.006" rgba="0.2 0.4 1 0.35"/>
+            <body name="white_pusher_body" pos="0.0 0 0">
+              <!-- 白色通道的实体推杆，控制器名称为 user_white_pusher。 -->
+              <joint name="white_pusher_joint" type="slide" axis="1 0 0"
+                     range="0 0.230" damping="0.10" armature="0.001"/>
+              <geom name="white_pusher_plate" type="box" pos="0.018 0 0"
+                    size="0.018 0.050 0.040" mass="0.012"
+                    rgba="0.20 0.48 0.95 1"/>
+            </body>
+            <body name="white_gate_body" pos="0.130 0 0">
+              <!-- 白色通道的挡门，控制器名称为 user_white_gate。 -->
+              <joint name="white_gate_joint" type="slide" axis="0 0 1"
+                     range="0 0.280" damping="0.18" armature="0.002"/>
+              <geom name="white_gate_pin" type="box" pos="0 0 0"
+                    size="0.006 0.060 0.045" mass="0.006"
+                    rgba="0.72 0.86 1.00 0.94"/>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+
+  <!--
+    六个位置执行器是本 XML 对外提供的用户接口。go2.xml attach 后名称会
+    自动变成：
+
+      user_turret_yaw / user_turret_pitch
+      user_yellow_gate / user_white_gate
+      user_yellow_pusher / user_white_pusher
+
+    kp/kv 是位置伺服的刚度和速度阻尼；ctrlrange 限制控制器可请求的目标
+    关节位置；forcerange 限制 MuJoCo 最终施加的执行器力。控制器只返回
+    目标位置，具体的力和球的加速度由 MuJoCo 伺服与物理接触计算。
+  -->
+  <actuator>
+    <!-- 云台角度控制：控制器在 AIM_* 阶段持续发送目标 yaw/pitch。 -->
+    <position name="turret_yaw" joint="turret_yaw_joint"
+              kp="800" kv="24" ctrllimited="true" ctrlrange="-3.00 3.00"
+              forcelimited="true" forcerange="-60 60"/>
+    <position name="turret_pitch" joint="turret_pitch_joint"
+              kp="600" kv="20" ctrllimited="true" ctrlrange="-0.75 1.00"
+              forcelimited="true" forcerange="-45 45"/>
+    <!-- 挡门位置控制：0 为关闭，GATE_OPEN 附近为打开。 -->
+    <position name="yellow_gate" joint="yellow_gate_joint"
+              kp="800" kv="24" ctrllimited="true" ctrlrange="0 0.280"
+              forcelimited="true" forcerange="-35 35"/>
+    <position name="white_gate" joint="white_gate_joint"
+              kp="800" kv="24" ctrllimited="true" ctrlrange="0 0.280"
+              forcelimited="true" forcerange="-35 35"/>
+    <!-- 推杆位置控制：0 为收回，PUSH_STROKE 为发射后的前伸位置。 -->
+    <position name="yellow_pusher" joint="yellow_pusher_joint"
+              kp="2250" kv="24" ctrllimited="true" ctrlrange="0 0.230"
+              forcelimited="true" forcerange="-347.175 347.175"/>
+    <position name="white_pusher" joint="white_pusher_joint"
+              kp="2250" kv="24" ctrllimited="true" ctrlrange="0 0.230"
+              forcelimited="true" forcerange="-347.175 347.175"/>
+  </actuator>
+</mujoco>
