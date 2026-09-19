@@ -1,0 +1,21 @@
+IDC2026 Cyber Game - Organizer Materials
+
+This directory contains materials associated with the organizer-provided
+Cyber Game baseline.
+
+1. IDC2026_CyberGame_Organizer_Complete_0814.zip
+   The complete 0814 baseline package. It contains the organizer-side field
+   program, scene, Go2 model, assets, launcher, and the sample participant
+   interface files.
+
+2. IDC2026_CyberGame_Organizer_Minimal_0814.zip
+   A compact, unmodified copy of the participant-facing files from the same
+   0814 baseline. It contains the official participant-program template,
+   participant-mechanism template, and the official package instructions.
+   It is included for interface reference and is not Team Orange's final
+   submission.
+
+The organizer-side runtime owns the field, timing, randomized target setup,
+MuJoCo physics stepping, scoring, and referee logic. Team Orange's strategy
+and mechanism are stored separately under the repository's submission/
+directory.
